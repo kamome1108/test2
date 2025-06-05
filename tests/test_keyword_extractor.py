@@ -1,7 +1,8 @@
 from ai_research_agent import KeywordExtractor
 
 
-def test_generate_returns_theme():
+def test_generate_returns_keywords():
     extractor = KeywordExtractor()
     result = extractor.generate("test")
-    assert "test" in result
+    assert result[0] == "test"
+    assert len(result) >= 2

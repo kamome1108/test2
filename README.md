@@ -15,3 +15,13 @@ Windows 環境では `setup.bat` を実行すると、`venv` フォルダーに�
 
 セットアップ後は `run.bat` を実行してください。仮想環境を有効化した状態で
 `ai_research_agent.py` を起動します。
+
+## Development
+
+The following commands run formatting and tests:
+
+```bash
+ruff check .
+black ai_research_agent.py tests/*.py --line-length 79 --check
+pytest -q
+```

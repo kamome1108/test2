@@ -50,35 +50,51 @@ class KeywordExtractor:
 
     def generate(self, theme: str) -> List[str]:
         """Generate keyword candidates from a theme."""
-        # Placeholder implementation
-        return [theme]
+        base = theme.strip()
+        if not base:
+            return []
+        # Very simple placeholder generation. Real implementation would
+        # use a local LLM to propose related keywords.
+        return [base, f"{base} 研究", f"{base} ニュース"]
 
 
 class WebCrawler:
     def __init__(self, output_dir: str = "captures"):
         self.output_dir = output_dir
         os.makedirs(output_dir, exist_ok=True)
-        # TODO: initialize webdriver if available
+        self.driver = None
+        if webdriver:
+            try:
+                self.driver = webdriver.Chrome()
+            except Exception:  # pragma: no cover - runtime setup may fail
+                self.driver = None
 
     def crawl(self, keywords: List[str], limit: int = 5) -> List[PageInfo]:
         """Search the web for each keyword and capture pages."""
         pages: List[PageInfo] = []
-        if not webdriver or not requests:
+        if not self.driver or not requests:
             return pages
 
         for kw in keywords:
-            # Placeholder search using requests
             resp = requests.get(f"https://www.google.com/search?q={kw}")
             soup = BeautifulSoup(resp.text, "html.parser")
-            for link in soup.select("a")[:limit]:
+            results = [a for a in soup.select("a") if a.get("href")][:limit]
+            for link in results:
                 url = link.get("href")
-                title = link.text
-                screenshot_path = os.path.join(self.output_dir, f"{kw}.png")
+                title = link.text.strip() or url
+                self.driver.get(url)
+                filename = f"{abs(hash(url))}.png"
+                screenshot_path = os.path.join(self.output_dir, filename)
+                self.driver.save_screenshot(screenshot_path)
                 pages.append(
                     PageInfo(
-                        url=url, title=title, screenshot_path=screenshot_path
+                        url=url,
+                        title=title,
+                        screenshot_path=screenshot_path,
+                        parent_url=None,
                     )
                 )
+        self.driver.quit()
         return pages
 
 
