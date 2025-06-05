@@ -97,6 +97,20 @@ class DatabaseManager:
         self.conn = sqlite3.connect(db_path)
         self._create_tables()
 
+    def __enter__(self) -> "DatabaseManager":
+        """Enter context management."""
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        """Ensure connection is closed on exit."""
+        self.close()
+
+    def close(self) -> None:
+        """Close the underlying SQLite connection."""
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+
     def _create_tables(self) -> None:
         cur = self.conn.cursor()
         cur.execute(
@@ -144,6 +158,7 @@ class ResearchAgent:
             page.text = self.ocr.extract_text(page)
             self.db.save_page(page)
         print(f"Saved {len(pages)} pages to database.")
+        self.db.close()
 
 
 if __name__ == "__main__":  # pragma: no cover - manual execution
