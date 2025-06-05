@@ -112,6 +112,17 @@ class DatabaseManager:
         )
         self.conn.commit()
 
+    def get_page(self, url: str) -> Optional[PageInfo]:
+        cur = self.conn.cursor()
+        cur.execute(
+            "SELECT url, title, screenshot_path, text, parent_url FROM pages WHERE url=?",
+            (url,),
+        )
+        row = cur.fetchone()
+        if row:
+            return PageInfo(*row)
+        return None
+
     def save_page(self, page: PageInfo) -> None:
         cur = self.conn.cursor()
         cur.execute(
@@ -128,6 +139,15 @@ class DatabaseManager:
             ),
         )
         self.conn.commit()
+
+    def close(self) -> None:
+        self.conn.close()
+
+    def __enter__(self) -> "DatabaseManager":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
 
 
 class ResearchAgent:
