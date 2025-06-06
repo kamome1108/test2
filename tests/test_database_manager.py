@@ -14,7 +14,7 @@ def test_save_and_get_page(tmp_path):
         assert retrieved.title == page.title
 
 
-def test_list_and_export(tmp_path):
+def test_list_and_export_csv(tmp_path):
     db_file = tmp_path / "test.db"
     export_file = tmp_path / "out.csv"
     with DatabaseManager(str(db_file)) as db:
@@ -28,3 +28,16 @@ def test_list_and_export(tmp_path):
         assert len(pages) == 2
         db.export_csv(str(export_file))
     assert export_file.exists()
+
+
+def test_export_markdown(tmp_path):
+    db_file = tmp_path / "test.db"
+    md_file = tmp_path / "out.md"
+    with DatabaseManager(str(db_file)) as db:
+        db.save_page(
+            PageInfo(
+                url="http://a", title="A", screenshot_path="a.png", text="txt"
+            )
+        )
+        db.export_markdown(str(md_file))
+    assert md_file.exists()

@@ -176,6 +176,16 @@ class DatabaseManager:
                     [p.url, p.title, p.screenshot_path, p.text, p.parent_url]
                 )
 
+    def export_markdown(self, file_path: str) -> None:
+        """Export all page records to a Markdown file."""
+        pages = self.list_pages()
+        with open(file_path, "w", encoding="utf-8") as f:
+            for p in pages:
+                f.write(f"## {p.title}\n")
+                f.write(f"[{p.url}]({p.url})\n\n")
+                if p.text:
+                    f.write(f"{p.text}\n\n")
+
     def get_page(self, url: str) -> Optional[PageInfo]:
         cur = self.conn.cursor()
         cur.execute(
@@ -226,7 +236,12 @@ class ResearchAgent:
         self.crawler.close()
         self.db.close()
 
-    def run(self, theme: str, export_csv: Optional[str] = None) -> None:
+    def run(
+        self,
+        theme: str,
+        export_csv: Optional[str] = None,
+        export_md: Optional[str] = None,
+    ) -> None:
         keywords = self.keyword_extractor.generate(theme)
         pages = self.crawler.crawl(keywords)
         for page in pages:
@@ -237,6 +252,9 @@ class ResearchAgent:
         if export_csv:
             self.db.export_csv(export_csv)
             print(f"Exported results to {export_csv}")
+        if export_md:
+            self.db.export_markdown(export_md)
+            print(f"Exported markdown to {export_md}")
 
 
 if __name__ == "__main__":  # pragma: no cover - manual execution
@@ -249,10 +267,19 @@ if __name__ == "__main__":  # pragma: no cover - manual execution
     parser.add_argument(
         "--export-csv", metavar="PATH", help="Export results to CSV"
     )
+    parser.add_argument(
+        "--export-md",
+        metavar="PATH",
+        help="Export results to a Markdown file",
+    )
     args = parser.parse_args()
 
     agent = ResearchAgent()
     try:
-        agent.run(args.theme, export_csv=args.export_csv)
+        agent.run(
+            args.theme,
+            export_csv=args.export_csv,
+            export_md=args.export_md,
+        )
     finally:
         agent.close()

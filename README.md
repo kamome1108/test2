@@ -24,10 +24,11 @@ GUI を使う場合は `run.bat gui` を実行するか、`python gui.py` を直
 run.bat "人工知能"
 ```
 
-To export the collected results as CSV, pass `--export-csv` with a file path:
+To export the collected results as CSV, pass `--export-csv` with a file path.
+For a Markdown summary, use `--export-md`.
 
 ```cmd
-run.bat "人工知能" --export-csv results.csv
+run.bat "人工知能" --export-csv results.csv --export-md results.md
 ```
 
 ## Development
