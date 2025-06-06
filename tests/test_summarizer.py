@@ -8,3 +8,8 @@ def test_summarize_first_sentences():
     assert "テスト" in summary
     assert "次の文" in summary
     assert "最後" not in summary
+
+
+def test_summarize_empty_text():
+    s = Summarizer()
+    assert s.summarize("", max_sentences=2) == ""
