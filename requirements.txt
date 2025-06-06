@@ -1,0 +1,6 @@
+PyQt6
+requests
+beautifulsoup4
+selenium
+pytesseract
+pillow
