@@ -152,6 +152,30 @@ class DatabaseManager:
         )
         self.conn.commit()
 
+    def list_pages(self) -> List[PageInfo]:
+        """Return all stored pages."""
+        cur = self.conn.cursor()
+        cur.execute(
+            "SELECT url, title, screenshot_path, text, parent_url FROM pages"
+        )
+        rows = cur.fetchall()
+        return [PageInfo(*row) for row in rows]
+
+    def export_csv(self, file_path: str) -> None:
+        """Export all page records to a CSV file."""
+        import csv
+
+        pages = self.list_pages()
+        with open(file_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(
+                ["url", "title", "screenshot_path", "text", "parent_url"]
+            )
+            for p in pages:
+                writer.writerow(
+                    [p.url, p.title, p.screenshot_path, p.text, p.parent_url]
+                )
+
     def get_page(self, url: str) -> Optional[PageInfo]:
         cur = self.conn.cursor()
         cur.execute(
@@ -202,7 +226,7 @@ class ResearchAgent:
         self.crawler.close()
         self.db.close()
 
-    def run(self, theme: str) -> None:
+    def run(self, theme: str, export_csv: Optional[str] = None) -> None:
         keywords = self.keyword_extractor.generate(theme)
         pages = self.crawler.crawl(keywords)
         for page in pages:
@@ -210,6 +234,9 @@ class ResearchAgent:
             page.text = self.summarizer.summarize(full_text)
             self.db.save_page(page)
         print(f"Saved {len(pages)} pages to database.")
+        if export_csv:
+            self.db.export_csv(export_csv)
+            print(f"Exported results to {export_csv}")
 
 
 if __name__ == "__main__":  # pragma: no cover - manual execution
@@ -219,10 +246,13 @@ if __name__ == "__main__":  # pragma: no cover - manual execution
     parser.add_argument(
         "theme", nargs="?", default="テスト", help="Research theme"
     )
+    parser.add_argument(
+        "--export-csv", metavar="PATH", help="Export results to CSV"
+    )
     args = parser.parse_args()
 
     agent = ResearchAgent()
     try:
-        agent.run(args.theme)
+        agent.run(args.theme, export_csv=args.export_csv)
     finally:
         agent.close()
