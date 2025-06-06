@@ -5,4 +5,4 @@ if not exist "%VENV_DIR%\Scripts\python.exe" (
     exit /b 1
 )
 call "%VENV_DIR%\Scripts\activate"
-"%VENV_DIR%\Scripts\python.exe" ai_research_agent.py
+"%VENV_DIR%\Scripts\python.exe" ai_research_agent.py %*

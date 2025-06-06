@@ -6,6 +6,7 @@ This script is not fully functional without additional setup.
 """
 
 import os
+import re
 import sqlite3
 from dataclasses import dataclass
 from typing import List, Optional
@@ -69,6 +70,12 @@ class WebCrawler:
             except Exception:  # pragma: no cover - runtime setup may fail
                 self.driver = None
 
+    @staticmethod
+    def _sanitize_filename(text: str) -> str:
+        """Return a filesystem-safe representation of ``text``."""
+        text = text.strip().replace("\\", "_").replace("/", "_")
+        return re.sub(r"[^A-Za-z0-9_.-]", "_", text)
+
     def crawl(self, keywords: List[str], limit: int = 5) -> List[PageInfo]:
         """Search the web for each keyword and capture pages."""
         pages: List[PageInfo] = []
@@ -83,9 +90,12 @@ class WebCrawler:
                 url = link.get("href")
                 title = link.text.strip() or url
                 self.driver.get(url)
-                filename = f"{abs(hash(url))}.png"
+                filename = self._sanitize_filename(url) + ".png"
                 screenshot_path = os.path.join(self.output_dir, filename)
-                self.driver.save_screenshot(screenshot_path)
+                try:
+                    self.driver.save_screenshot(screenshot_path)
+                except Exception:  # pragma: no cover - webdriver failure
+                    continue
                 pages.append(
                     PageInfo(
                         url=url,
@@ -94,8 +104,14 @@ class WebCrawler:
                         parent_url=None,
                     )
                 )
-        self.driver.quit()
         return pages
+
+    def close(self) -> None:
+        if self.driver:
+            try:
+                self.driver.quit()
+            except Exception:  # pragma: no cover - driver may be dead
+                pass
 
 
 class OCRProcessor:
@@ -173,6 +189,10 @@ class ResearchAgent:
         self.ocr = OCRProcessor()
         self.db = DatabaseManager()
 
+    def close(self) -> None:
+        self.crawler.close()
+        self.db.close()
+
     def run(self, theme: str) -> None:
         keywords = self.keyword_extractor.generate(theme)
         pages = self.crawler.crawl(keywords)
@@ -183,5 +203,16 @@ class ResearchAgent:
 
 
 if __name__ == "__main__":  # pragma: no cover - manual execution
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run research agent")
+    parser.add_argument(
+        "theme", nargs="?", default="テスト", help="Research theme"
+    )
+    args = parser.parse_args()
+
     agent = ResearchAgent()
-    agent.run("テスト")
+    try:
+        agent.run(args.theme)
+    finally:
+        agent.close()
