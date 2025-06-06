@@ -8,8 +8,10 @@ This script is not fully functional without additional setup.
 import os
 import re
 import sqlite3
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 from typing import List, Optional
+from concurrent.futures import ThreadPoolExecutor
 
 # Placeholder imports for external libraries
 try:
@@ -41,6 +43,7 @@ class PageInfo:
     screenshot_path: str
     text: str = ""
     parent_url: Optional[str] = None
+    captured_at: float = field(default_factory=time.time)
 
 
 class KeywordExtractor:
@@ -134,7 +137,7 @@ class Summarizer:
 
 class DatabaseManager:
     def __init__(self, db_path: str = "agent.db"):
-        self.conn = sqlite3.connect(db_path)
+        self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self._create_tables()
 
     def _create_tables(self) -> None:
@@ -146,7 +149,8 @@ class DatabaseManager:
                 title TEXT,
                 screenshot_path TEXT,
                 text TEXT,
-                parent_url TEXT
+                parent_url TEXT,
+                captured_at REAL
             )
             """
         )
@@ -156,7 +160,7 @@ class DatabaseManager:
         """Return all stored pages."""
         cur = self.conn.cursor()
         cur.execute(
-            "SELECT url, title, screenshot_path, text, parent_url FROM pages"
+            "SELECT url, title, screenshot_path, text, parent_url, captured_at FROM pages"
         )
         rows = cur.fetchall()
         return [PageInfo(*row) for row in rows]
@@ -169,11 +173,25 @@ class DatabaseManager:
         with open(file_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(
-                ["url", "title", "screenshot_path", "text", "parent_url"]
+                [
+                    "url",
+                    "title",
+                    "screenshot_path",
+                    "text",
+                    "parent_url",
+                    "captured_at",
+                ]
             )
             for p in pages:
                 writer.writerow(
-                    [p.url, p.title, p.screenshot_path, p.text, p.parent_url]
+                    [
+                        p.url,
+                        p.title,
+                        p.screenshot_path,
+                        p.text,
+                        p.parent_url,
+                        p.captured_at,
+                    ]
                 )
 
     def export_markdown(self, file_path: str) -> None:
@@ -185,6 +203,7 @@ class DatabaseManager:
                 f.write(f"[{p.url}]({p.url})\n\n")
                 if p.text:
                     f.write(f"{p.text}\n\n")
+                f.write(f"Captured at: {p.captured_at}\n\n")
 
     def export_json(self, file_path: str) -> None:
         """Export all page records to a JSON file."""
@@ -198,7 +217,7 @@ class DatabaseManager:
     def get_page(self, url: str) -> Optional[PageInfo]:
         cur = self.conn.cursor()
         cur.execute(
-            "SELECT url, title, screenshot_path, text, parent_url FROM pages WHERE url=?",
+            "SELECT url, title, screenshot_path, text, parent_url, captured_at FROM pages WHERE url=?",
             (url,),
         )
         row = cur.fetchone()
@@ -210,8 +229,15 @@ class DatabaseManager:
         cur = self.conn.cursor()
         cur.execute(
             """
-            INSERT OR REPLACE INTO pages (url, title, screenshot_path, text, parent_url)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO pages (
+                url,
+                title,
+                screenshot_path,
+                text,
+                parent_url,
+                captured_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 page.url,
@@ -219,6 +245,7 @@ class DatabaseManager:
                 page.screenshot_path,
                 page.text,
                 page.parent_url,
+                page.captured_at,
             ),
         )
         self.conn.commit()
@@ -251,13 +278,22 @@ class ResearchAgent:
         export_csv: Optional[str] = None,
         export_md: Optional[str] = None,
         export_json: Optional[str] = None,
+        use_threads: bool = False,
     ) -> None:
         keywords = self.keyword_extractor.generate(theme)
         pages = self.crawler.crawl(keywords)
-        for page in pages:
+
+        def process(page: PageInfo) -> None:
             full_text = self.ocr.extract_text(page)
             page.text = self.summarizer.summarize(full_text)
             self.db.save_page(page)
+
+        if use_threads and pages:
+            with ThreadPoolExecutor() as ex:
+                list(ex.map(process, pages))
+        else:
+            for p in pages:
+                process(p)
         print(f"Saved {len(pages)} pages to database.")
         if export_csv:
             self.db.export_csv(export_csv)
@@ -290,6 +326,11 @@ if __name__ == "__main__":  # pragma: no cover - manual execution
         metavar="PATH",
         help="Export results to a JSON file",
     )
+    parser.add_argument(
+        "--threads",
+        action="store_true",
+        help="Process pages concurrently",
+    )
     args = parser.parse_args()
 
     agent = ResearchAgent()
@@ -299,6 +340,7 @@ if __name__ == "__main__":  # pragma: no cover - manual execution
             export_csv=args.export_csv,
             export_md=args.export_md,
             export_json=args.export_json,
+            use_threads=args.threads,
         )
     finally:
         agent.close()

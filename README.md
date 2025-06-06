@@ -28,9 +28,11 @@ To export the collected results as CSV, pass `--export-csv` with a file path.
 For a Markdown summary, use `--export-md`.
 For a JSON export, use `--export-json`.
 
+Set `--threads` to process OCR and summarization concurrently.
+
 ```cmd
 run.bat "人工知能" --export-csv results.csv --export-md results.md \
-  --export-json results.json
+  --export-json results.json --threads
 ```
 
 ## Development

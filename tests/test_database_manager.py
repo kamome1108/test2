@@ -12,6 +12,7 @@ def test_save_and_get_page(tmp_path):
         assert retrieved is not None
         assert retrieved.url == page.url
         assert retrieved.title == page.title
+        assert retrieved.captured_at > 0
 
 
 def test_list_and_export_csv(tmp_path):
