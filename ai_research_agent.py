@@ -186,6 +186,15 @@ class DatabaseManager:
                 if p.text:
                     f.write(f"{p.text}\n\n")
 
+    def export_json(self, file_path: str) -> None:
+        """Export all page records to a JSON file."""
+        import json
+
+        pages = self.list_pages()
+        data = [p.__dict__ for p in pages]
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
     def get_page(self, url: str) -> Optional[PageInfo]:
         cur = self.conn.cursor()
         cur.execute(
@@ -241,6 +250,7 @@ class ResearchAgent:
         theme: str,
         export_csv: Optional[str] = None,
         export_md: Optional[str] = None,
+        export_json: Optional[str] = None,
     ) -> None:
         keywords = self.keyword_extractor.generate(theme)
         pages = self.crawler.crawl(keywords)
@@ -255,6 +265,9 @@ class ResearchAgent:
         if export_md:
             self.db.export_markdown(export_md)
             print(f"Exported markdown to {export_md}")
+        if export_json:
+            self.db.export_json(export_json)
+            print(f"Exported JSON to {export_json}")
 
 
 if __name__ == "__main__":  # pragma: no cover - manual execution
@@ -272,6 +285,11 @@ if __name__ == "__main__":  # pragma: no cover - manual execution
         metavar="PATH",
         help="Export results to a Markdown file",
     )
+    parser.add_argument(
+        "--export-json",
+        metavar="PATH",
+        help="Export results to a JSON file",
+    )
     args = parser.parse_args()
 
     agent = ResearchAgent()
@@ -280,6 +298,7 @@ if __name__ == "__main__":  # pragma: no cover - manual execution
             args.theme,
             export_csv=args.export_csv,
             export_md=args.export_md,
+            export_json=args.export_json,
         )
     finally:
         agent.close()

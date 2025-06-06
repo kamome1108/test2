@@ -41,3 +41,16 @@ def test_export_markdown(tmp_path):
         )
         db.export_markdown(str(md_file))
     assert md_file.exists()
+
+
+def test_export_json(tmp_path):
+    db_file = tmp_path / "test.db"
+    json_file = tmp_path / "out.json"
+    with DatabaseManager(str(db_file)) as db:
+        db.save_page(
+            PageInfo(
+                url="http://a", title="A", screenshot_path="a.png", text="txt"
+            )
+        )
+        db.export_json(str(json_file))
+    assert json_file.exists()
