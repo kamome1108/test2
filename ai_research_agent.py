@@ -124,6 +124,14 @@ class OCRProcessor:
         return text
 
 
+class Summarizer:
+    def summarize(self, text: str, max_sentences: int = 3) -> str:
+        """Return a naive summary using the first few sentences."""
+        sentences = re.split(r"[。.!?]\s*", text)
+        cleaned = [s.strip() for s in sentences if s.strip()]
+        return "。".join(cleaned[:max_sentences])
+
+
 class DatabaseManager:
     def __init__(self, db_path: str = "agent.db"):
         self.conn = sqlite3.connect(db_path)
@@ -187,6 +195,7 @@ class ResearchAgent:
         self.keyword_extractor = KeywordExtractor()
         self.crawler = WebCrawler()
         self.ocr = OCRProcessor()
+        self.summarizer = Summarizer()
         self.db = DatabaseManager()
 
     def close(self) -> None:
@@ -197,7 +206,8 @@ class ResearchAgent:
         keywords = self.keyword_extractor.generate(theme)
         pages = self.crawler.crawl(keywords)
         for page in pages:
-            page.text = self.ocr.extract_text(page)
+            full_text = self.ocr.extract_text(page)
+            page.text = self.summarizer.summarize(full_text)
             self.db.save_page(page)
         print(f"Saved {len(pages)} pages to database.")
 

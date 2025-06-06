@@ -3,6 +3,9 @@
 This repository contains a prototype implementation of the personal AI research agent.
 For an overview of the planned features, see [design.md](design.md).
 
+Captured pages are processed with OCR and a simple summarizer extracts the first
+few sentences for storage.
+
 The script is not fully functional by default. To try it locally, first set up a
 Python virtual environment.
 
